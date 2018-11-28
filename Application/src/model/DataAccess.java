@@ -160,6 +160,7 @@ public class DataAccess implements AutoCloseable {
       return false;
     }
     // TODO
+    
   }
 
   /**
@@ -309,7 +310,11 @@ public class DataAccess implements AutoCloseable {
    */
   @Override
   public void close() throws DataAccessException {
-    // TODO
+      try {
+          connection.close();
+      } catch (SQLException ex) {
+          Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+      }
   }
 
 }
