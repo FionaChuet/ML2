@@ -2,6 +2,7 @@ package model;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
@@ -77,7 +78,11 @@ import java.util.logging.Logger;
  */
 public class DataAccess implements AutoCloseable {
 
-  private Connection connection;
+  private Connection connection; 
+  private PreparedStatement dropSeats; // To drop 'seats' relation if any
+  private PreparedStatement dropCategories; // To drop 'categories' relation if any
+  private PreparedStatement createSeats; // To create 'seats' relation
+  private PreparedStatement createCategories; // To create 'categories' relation
 
   /**
    * Creates a new {@code DataAccess} object that interacts with the specified
@@ -94,6 +99,7 @@ public class DataAccess implements AutoCloseable {
   public DataAccess(String url, String login, String password) throws
       DataAccessException {
       try {
+          // Connect to the database
           connection = DriverManager.getConnection(url, login, password);
       } catch (SQLException ex) {
           Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
@@ -134,30 +140,83 @@ public class DataAccess implements AutoCloseable {
    */
   public boolean initDataStore(int seatCount, List<Float> priceList)
       throws DataAccessException {
-    String sql = null;
-    // Below is an example showing how to manage table "foo".
-    // You have to tailor the example to your needs.
     try {
-      // drop existing tables, if any
-      Statement statement = connection.createStatement();
-      try {
-        statement.executeUpdate("drop table foo");
-      } catch (SQLException e) {
-        // likely cause: table does not exists: print error and go on
-        System.err.print("drop table foo: " + e);
-        System.err.println(", going on...");
-      }
-      // ...
-      // create tables
-      sql = "create table foo (bar int)";
-      statement.executeUpdate(sql);
-      // ...
-      // populate tables if needed
-      // ...
-      return true;
-    } catch (SQLException e) {
-      System.err.println(sql + ": " + e);
-      return false;
+        /* We need to create 2 relations:
+        - First on is the 'seats' relation, which holds all the seats information about seats.
+        (number, booking as names of customers, category (id))
+        - Second is the 'categories' relation, which holds all information about categories price.
+        
+        To create both of these relations, we use a lazy initialisation/design pattern with prepared statements.
+        */
+        
+        // 0. Dropping relations in case they already exist in database
+        if (dropSeats == null || dropCategories == null) {
+            // Creating prepared statements
+            dropSeats = connection.prepareStatement("drop table seats");
+            dropCategories = connection.prepareStatement("drop table categories");
+                
+            // Executing queries
+            dropSeats.executeUpdate();
+            dropCategories.executeUpdate();
+        }
+        
+        // 1. Creating the 'categories' relations
+        createCategories = connection.prepareStatement("create table categories (id integer not null auto_increment,"
+                                                        + "name varchar(10) not null unique,"
+                                                        + "price float not null,"
+                                                        + "constraint pk_categories primary key (id))");
+        
+        createSeats = connection.prepareStatement("create table seats (number integer not null auto_increment,"
+                                                        + "customer varchar(20) null unique,"
+                                                        + "id_cat integer null,"
+                                                        + "constraint pk_categories primary key (id))");
+        /*
+        create table categories (
+            id		integer not null auto_increment,
+            name	varchar(10) not null unique,
+            price	float not null,
+            constraint pk_categories primary key (id)
+        );
+        
+        create table seats (
+            number          integer not null auto_increment,
+            customer        varchar(20) null,
+            id_cat          integer null,
+            constraint pk_seats primary key (number)
+        );
+        */
+        
+        // 2. Creating the 'seats' relations
+        
+        String sql = null;
+        // Below is an example showing how to manage table "foo".
+        // You have to tailor the example to your needs.
+        try {
+            // drop existing tables, if any
+            Statement statement = connection.createStatement();
+            try {
+                statement.executeUpdate("drop table foo");
+            } catch (SQLException e) {
+                // likely cause: table does not exists: print error and go on
+                System.err.print("drop table foo: " + e);
+                System.err.println(", going on...");
+            }
+            // ...
+            // create tables
+            sql = "create table foo (bar int)";
+            statement.executeUpdate(sql);
+            // ...
+            // populate tables if needed
+            // ...
+            return true;
+        } catch (SQLException e) {
+            System.err.println(sql + ": " + e);
+            return false;
+        }
+        // TODO
+        
+    } catch (SQLException ex) {
+          Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
     }
     // TODO
     
