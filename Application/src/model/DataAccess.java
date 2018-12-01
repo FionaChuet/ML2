@@ -5,10 +5,12 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.ArrayList;
 
 /**
  * Provides a generic booking application with high-level methods to access its
@@ -83,6 +85,10 @@ public class DataAccess implements AutoCloseable {
   private PreparedStatement dropCategories; // To drop 'categories' relation if any
   private PreparedStatement createSeats; // To create 'seats' relation
   private PreparedStatement createCategories; // To create 'categories' relation
+  private PreparedStatement getPriceList; // To get the price list
+  private PreparedStatement getAvailableSeats; // To get the available seats
+  private PreparedStatement bookSeats; // To get the available seats
+
 
   /**
    * Creates a new {@code DataAccess} object that interacts with the specified
@@ -232,9 +238,22 @@ public class DataAccess implements AutoCloseable {
    *
    * @throws DataAccessException if an unrecoverable error occurs
    */
-  public List<Float> getPriceList() throws DataAccessException {
-    // TODO
-    return Collections.EMPTY_LIST;
+  public List<Float> getPriceList() throws DataAccessException, SQLException {
+    // create the prepared statement, if not created yet
+    if (getPriceList == null) 
+    {
+      getPriceList = connection.prepareStatement("SELECT price FROM categories");
+    }
+    // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
+    try (ResultSet result = getPriceList.executeQuery()) {
+      List<Float> list = new ArrayList<>();
+      while (result.next()) 
+      {
+        list.add(result.getFloat(1));
+      }
+      return list;
+    }
+    //return Collections.EMPTY_LIST;
   }
 
   /**
