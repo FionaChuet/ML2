@@ -334,38 +334,42 @@ public class DataAccess implements AutoCloseable {
     List<Integer> availableSeats = new ArrayList<>();
     List<Booking> list = new ArrayList<>();
     availableSeats = getAvailableSeats(true);
-    for(int i=0; i<availableSeats.size(); i++){
-        for (int j=0; j<retiredSeats; j++){
+    if (availableSeats.size() >= (retiredSeats+adultSeats+childSeats)){
+    for(int i=0; i<retiredSeats; i++){
         bookSeats = connection.prepareStatement("UPDATE seats SET customer = '" + customer + "', id_cat= '0' "
-          + "WHERE number = " + availableSeats.get(i));
+          + "WHERE number = " + availableSeats.get(i)); 
         // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
         try (ResultSet result = bookSeats.executeQuery()) {
           while (result.next()) 
           { // booking(int id, int seat, String customer, int category, float price)
             list.add(new Booking(availableSeats.get(i), result.getInt(2), customer, result.getInt(4), result.getFloat(5)));
           }
-        }}
-        for (int j = 0; j < adultSeats; j++) {
+        }
+       }
+    //assign the adult seats
+    for (int i = retiredSeats; i < retiredSeats+adultSeats; i++) {
         bookSeats = connection.prepareStatement("UPDATE seats SET customer = '" + customer + "', id_cat= '1' "
                 + "WHERE number = " + availableSeats.get(i));
         // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
         try (ResultSet result = bookSeats.executeQuery()) {
             while (result.next()) { // booking(int id, int seat, String customer, int category, float price)
-                list.add(new Booking(result.getInt(1), result.getInt(2), result.getString(3), result.getInt(4), result.getFloat(5)));
-            }
-        }
-        }
-        for (int j = 0; j < childSeats; j++) {
-            bookSeats = connection.prepareStatement("UPDATE seats SET customer = '" + customer + "', id_cat= '2' "
-                    + "WHERE number = " + availableSeats.get(i));
-            // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
-            try (ResultSet result = bookSeats.executeQuery()) {
-                while (result.next()) { // booking(int id, int seat, String customer, int category, float price)
-                    list.add(new Booking(result.getInt(1), result.getInt(2), result.getString(3), result.getInt(4), result.getFloat(5)));
-                }
+                list.add(new Booking(availableSeats.get(i), result.getInt(2), customer, result.getInt(4), result.getFloat(5)));
             }
         }
     }
+   //assign the child seats 
+    for (int i = retiredSeats+adultSeats; i < availableSeats.size(); i++) {
+        bookSeats = connection.prepareStatement("UPDATE seats SET customer = '" + customer + "', id_cat= '2' "
+                + "WHERE number = " + availableSeats.get(i));
+        // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
+        try (ResultSet result = bookSeats.executeQuery()) {
+            while (result.next()) { // booking(int id, int seat, String customer, int category, float price)
+                list.add(new Booking(availableSeats.get(i), result.getInt(2), customer, result.getInt(4), result.getFloat(5)));
+            }
+        }
+    }
+    }
+ 
     return list;
   }
 
