@@ -325,26 +325,48 @@ public class DataAccess implements AutoCloseable {
    *
    * @throws DataAccessException if an unrecoverable error occurs
    */
-  public List<Booking> bookSeats(String customer, List<Integer> counts, boolean adjoining) throws DataAccessException {
-    // create the prepared statement, if not created yet
+  public List<Booking> bookSeats(String customer, List<Integer> counts, boolean adjoining) throws DataAccessException, SQLException {
+    //get the number of seats per category
     int retiredSeats = counts.get(0);
     int adultSeats = counts.get(1);
     int childSeats = counts.get(2);
-    if (bookSeats == null) 
-    {
-      bookSeats = connection.prepareStatement();
+    //get the list of available seats
+    List<Integer> availableSeats = new ArrayList<>();
+    List<Booking> list = new ArrayList<>();
+    availableSeats = getAvailableSeats(true);
+    for(int i=0; i<availableSeats.size(); i++){
+        for (int j=0; j<retiredSeats; j++){
+        bookSeats = connection.prepareStatement("UPDATE seats SET customer = '" + customer + "', id_cat= '0' "
+          + "WHERE number = " + availableSeats.get(i));
+        // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
+        try (ResultSet result = bookSeats.executeQuery()) {
+          while (result.next()) 
+          { // booking(int id, int seat, String customer, int category, float price)
+            list.add(new Booking(availableSeats.get(i), result.getInt(2), customer, result.getInt(4), result.getFloat(5)));
+          }
+        }}
+        for (int j = 0; j < adultSeats; j++) {
+        bookSeats = connection.prepareStatement("UPDATE seats SET customer = '" + customer + "', id_cat= '1' "
+                + "WHERE number = " + availableSeats.get(i));
+        // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
+        try (ResultSet result = bookSeats.executeQuery()) {
+            while (result.next()) { // booking(int id, int seat, String customer, int category, float price)
+                list.add(new Booking(result.getInt(1), result.getInt(2), result.getString(3), result.getInt(4), result.getFloat(5)));
+            }
+        }
+        }
+        for (int j = 0; j < childSeats; j++) {
+            bookSeats = connection.prepareStatement("UPDATE seats SET customer = '" + customer + "', id_cat= '2' "
+                    + "WHERE number = " + availableSeats.get(i));
+            // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
+            try (ResultSet result = bookSeats.executeQuery()) {
+                while (result.next()) { // booking(int id, int seat, String customer, int category, float price)
+                    list.add(new Booking(result.getInt(1), result.getInt(2), result.getString(3), result.getInt(4), result.getFloat(5)));
+                }
+            }
+        }
     }
-    // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
-    try (ResultSet result = getAvailableSeats.executeQuery()) {
-      List<Boolean> list = new ArrayList<>();
-      while (result.next()) 
-      { 
-        // booking(int id, int seat, String customer, int category, float price)
-        list.add(new Booking(result.getInt(1), result.getInt(2), result.getString(3), result.getInt(4), result.getFloat(5)));
-      }
-      return list;
-    }
-    //return Collections.EMPTY_LIST;
+    return list;
   }
 
   /**
@@ -382,7 +404,7 @@ public class DataAccess implements AutoCloseable {
    *
    * @throws DataAccessException if an unrecoverable error occurs
    */
-  public List<Booking> getBookings(String customer) throws DataAccessException {
+  public List<Booking> getBookings(String customer) throws DataAccessException, SQLException {
     if (getBookings == null && customer != "") 
     {
       getBookings = connection.prepareStatement("SELECT seats.number, seats.customer, seats.id_cat, categories.price "
@@ -395,7 +417,7 @@ public class DataAccess implements AutoCloseable {
     }
     // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
     try (ResultSet result = getBookings.executeQuery()) {
-      List<Boolean> list = new ArrayList<>();
+      List<Booking> list = new ArrayList<>();
       while (result.next()) 
       { 
         // booking(int id, int seat, String customer, int category, float price)
