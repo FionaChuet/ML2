@@ -278,10 +278,22 @@ public class DataAccess implements AutoCloseable {
    *
    * @throws DataAccessException if an unrecoverable error occurs
    */
-  public List<Integer> getAvailableSeats(boolean stable) throws
-      DataAccessException {
-    // TODO
-    return Collections.EMPTY_LIST;
+  public List<Integer> getAvailableSeats(boolean stable) throws DataAccessException, SQLException {
+    // create the prepared statement, if not created yet
+    if (getAvailableSeats == null) 
+    {
+      getAvailableSeats = connection.prepareStatement("SELECT number FROM seats WHERE customer IS null and id_cat IS null");
+    }
+    // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
+    try (ResultSet result = getAvailableSeats.executeQuery()) {
+      List<Integer> list = new ArrayList<>();
+      while (result.next()) 
+      {
+        list.add(result.getInt(1));
+      }
+      return list;
+    }
+    //return Collections.EMPTY_LIST;
   }
 
   /**
@@ -312,10 +324,26 @@ public class DataAccess implements AutoCloseable {
    *
    * @throws DataAccessException if an unrecoverable error occurs
    */
-  public List<Booking> bookSeats(String customer, List<Integer> counts,
-      boolean adjoining) throws DataAccessException {
-    // TODO
-    return Collections.EMPTY_LIST;
+  public List<Booking> bookSeats(String customer, List<Integer> counts, boolean adjoining) throws DataAccessException {
+    // create the prepared statement, if not created yet
+    int retiredSeats = counts.get(0);
+    int adultSeats = counts.get(1);
+    int childSeats = counts.get(2);
+    if (bookSeats == null) 
+    {
+      bookSeats = connection.prepareStatement();
+    }
+    // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
+    try (ResultSet result = getAvailableSeats.executeQuery()) {
+      List<Boolean> list = new ArrayList<>();
+      while (result.next()) 
+      { 
+        // booking(int id, int seat, String customer, int category, float price)
+        list.add(new Booking(result.getInt(1), result.getInt(2), result.getString(3), result.getInt(4), result.getFloat(5)));
+      }
+      return list;
+    }
+    //return Collections.EMPTY_LIST;
   }
 
   /**
