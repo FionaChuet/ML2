@@ -87,7 +87,8 @@ public class DataAccess implements AutoCloseable {
   private PreparedStatement createCategories; // To create 'categories' relation
   private PreparedStatement getPriceList; // To get the price list
   private PreparedStatement getAvailableSeats; // To get the available seats
-  private PreparedStatement bookSeats; // To get the available seats
+  private PreparedStatement bookSeats; // To book seats
+  private PreparedStatement getBookings; // To get the all bookings or of a specificed customer
 
 
   /**
@@ -382,8 +383,27 @@ public class DataAccess implements AutoCloseable {
    * @throws DataAccessException if an unrecoverable error occurs
    */
   public List<Booking> getBookings(String customer) throws DataAccessException {
-    // TODO
-    return Collections.EMPTY_LIST;
+    if (getBookings == null && customer != "") 
+    {
+      getBookings = connection.prepareStatement("SELECT seats.number, seats.customer, seats.id_cat, categories.price "
+              + "FROM seats INNER JOIN categories ON seats.id_cat = categories.id WHERE seats.customer = '" + customer + "'");
+    }
+    else
+    {
+      getBookings = connection.prepareStatement("SELECT seats.number, seats.customer, seats.id_cat, categories.price "
+              + "FROM seats INNER JOIN categories ON seats.id_cat = categories.id");
+    }
+    // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
+    try (ResultSet result = getBookings.executeQuery()) {
+      List<Boolean> list = new ArrayList<>();
+      while (result.next()) 
+      { 
+        // booking(int id, int seat, String customer, int category, float price)
+        list.add(new Booking(result.getInt(1), result.getInt(1), result.getString(2), result.getInt(3), result.getFloat(4)));
+      }
+      return list;
+    }
+    //return Collections.EMPTY_LIST;
   }
 
   /**
