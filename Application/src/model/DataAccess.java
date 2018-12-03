@@ -354,8 +354,7 @@ public class DataAccess implements AutoCloseable {
             }
 
             // Get list of available seats
-            List<Integer> availableSeats = new ArrayList<>();
-            availableSeats = getAvailableSeats(true);
+            List<Integer> availableSeats = getAvailableSeats(true);
 
             // Check of the number of seats to book are greater than the number of available seats
             if (totalSeats > availableSeats.size()) {
@@ -365,9 +364,8 @@ public class DataAccess implements AutoCloseable {
             // None of the seats to book are already used: we can book them
             if (!cancel) {
                 //get the list of available seats
-                List<Float> priceList = new ArrayList<>();
+                List<Float> priceList = getPriceList();
                 List<Booking> list = new ArrayList<>();
-                priceList = getPriceList();
                 int index = 0; // Index of available seats
 
                 //Prepared statement for bookings
@@ -426,19 +424,16 @@ public class DataAccess implements AutoCloseable {
             // Get the specified seats to book in each category (0: adult, 1: child, 2: retired)
             Map<Integer, Integer> seatsToBook = new HashMap<>();
             boolean cancel = false;
-            int totalSeats = 0;
 
             // For each category, store the array of seats to book inside the map
             for (int i = 0; i < seatss.size(); i++) {
                 for (Integer a : seatss.get(i)) {
                     seatsToBook.put(i, a); // Put the seats to book according to their respective categories
-                    totalSeats++; // Count the number of seats to book
                 }
             }
 
             // Get list of available seats
-            List<Booking> bookings = new ArrayList<>();
-            bookings = getBookings(null);
+            List<Booking> bookings = getBookings(null);
 
             // Check if all the seats to book are available; if not, cancel the operation
             Set<Entry<Integer, Integer>> setSTB = seatsToBook.entrySet();
@@ -455,9 +450,8 @@ public class DataAccess implements AutoCloseable {
             // None of the seats to book are already used: we can book them
             if (!cancel) {
                 //get the list of available seats
-                List<Float> priceList = new ArrayList<>();
+                List<Float> priceList = getPriceList();
                 List<Booking> list = new ArrayList<>();
-                priceList = getPriceList();
 
                 //Prepared statement for bookings
                 insertBookings = connection.prepareStatement("insert into bookings (id, seat, customer, category) values (null, ?, ?, ?)");
@@ -505,12 +499,11 @@ public class DataAccess implements AutoCloseable {
     public List<Booking> getBookings(String customer) throws DataAccessException {
         if (getBookings == null) {
             try {
-                if(customer == null){
+                if (customer == null) {
                     getBookings = connection.prepareStatement("SELECT bookings.id, bookings.seat, bookings.customer, bookings.category, categories.price FROM bookings INNER JOIN categories ON bookings.category = categories.id");
+                } else {
+                    getBookings = connection.prepareStatement("SELECT bookings.id, bookings.seat, bookings.customer, bookings.category, categories.price FROM bookings INNER JOIN categories ON bookings.category = categories.id WHERE bookings.customer = '" + customer + "'");
                 }
-                else{
-                  getBookings = connection.prepareStatement("SELECT bookings.id, bookings.seat, bookings.customer, bookings.category, categories.price FROM bookings INNER JOIN categories ON bookings.category = categories.id WHERE bookings.customer = '" + customer + "'");  
-                } 
             } catch (SQLException ex) {
                 Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -548,7 +541,68 @@ public class DataAccess implements AutoCloseable {
      * @throws DataAccessException if an unrecoverable error occurs
      */
     public boolean cancelBookings(List<Booking> bookings) throws DataAccessException {
-        // TODO
+        try {
+            //Variables
+            Map<Integer, Integer> seatsToBook = new HashMap<>();
+            boolean invalid = false;
+            List<Booking> checkBookings = new ArrayList();
+
+            // Need to check whether or not each booking is valid
+            // To do that, we need to store for each booking to cancel its customer and price category
+            for (Booking a : bookings) {
+                checkBookings = getBookings(a.getCustomer());
+            }
+
+            // Get list of available seats
+         //   List<Booking> bookings = getBookings(null);
+
+            // Check if all the seats to book are available; if not, cancel the operation
+            Set<Entry<Integer, Integer>> setSTB = seatsToBook.entrySet();
+            Iterator<Entry<Integer, Integer>> it = setSTB.iterator();
+            while (it.hasNext()) {
+                Entry<Integer, Integer> e = it.next();
+                for (Booking b : bookings) {
+                    if (b.getSeat() == e.getValue()) {
+                        invalid = true;
+                    }
+                }
+            }
+
+            // None of the seats to book are already used: we can book them
+            if (!invalid) {
+                //get the list of available seats
+                List<Float> priceList = new ArrayList<>();
+                List<Booking> list = new ArrayList<>();
+                priceList = getPriceList();
+
+                //Prepared statement for bookings
+                insertBookings = connection.prepareStatement("insert into bookings (id, seat, customer, category) values (null, ?, ?, ?)");
+                updateSeats = connection.prepareStatement("update seats set available = 1 where id = ?");
+
+                //New iterator 
+                Set<Entry<Integer, Integer>> setSTB2 = seatsToBook.entrySet();
+                Iterator<Entry<Integer, Integer>> it2 = setSTB2.iterator();
+                while (it2.hasNext()) { // Key: category / Value: ID of seat to book into said category
+                    Entry<Integer, Integer> en = it2.next();
+                    insertBookings.setInt(1, en.getValue());
+                 //   insertBookings.setString(2, customer);
+                    insertBookings.setInt(3, en.getKey());
+                    insertBookings.addBatch();
+                    updateSeats.setInt(1, en.getValue());
+                    updateSeats.addBatch();
+                   // list.add(new Booking(en.getValue(), customer, en.getKey(), priceList.get(en.getKey())));
+                }
+
+                // Inserting all bookings into database & updating seats table for booked seats
+                insertBookings.executeBatch();
+                updateSeats.executeBatch();
+
+                return true;
+            }
+
+        } catch (SQLException ex) {
+            Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+        }
         return false;
     }
 
