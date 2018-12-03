@@ -90,6 +90,7 @@ public class DataAccess implements AutoCloseable {
     private PreparedStatement insertSeats; // To create 'categories' relation
     private PreparedStatement insertCategories; // To create 'categories' relation
     private PreparedStatement insertBookings; // To create 'categories' relation
+    private PreparedStatement updateSeats; // To create 'categories' relation
     private PreparedStatement getPriceList; // To get the price list
     private PreparedStatement getAvailableSeats; // To get the available seats
     private PreparedStatement bookSeats; // To book seats
@@ -171,53 +172,50 @@ public class DataAccess implements AutoCloseable {
             dropSeats.executeUpdate();
             dropCategories.executeUpdate();
             dropBookings.executeUpdate();
-            
+
             // 1. Creating the 'categories' relations
             // Create the relation
             createCategories = connection.prepareStatement("create table categories (id integer not null,"
-                        + "name varchar(20) not null unique,"
-                        + "price float not null,"
-                        + "primary key (id))");
+                    + "name varchar(20) not null unique,"
+                    + "price float not null,"
+                    + "primary key (id))");
             createCategories.executeUpdate();
             // Insert into table
             insertCategories = connection.prepareStatement("insert into categories (id, name, price)"
                     + "values (0, 'adult', ?),"
                     + "(1, 'child', ?),"
                     + "(2, 'retired', ?)");
-            if(priceList.size() == 1){
-                for(int j = 0; j < 3; j++){
-                    insertCategories.setFloat((j+1), priceList.get(0));
+            if (priceList.size() == 1) {
+                for (int j = 0; j < 3; j++) {
+                    insertCategories.setFloat((j + 1), priceList.get(0));
                 }
-            }
-            else {
-                for(int i = 0; i < priceList.size(); i++){
-                    insertCategories.setFloat((i+1), priceList.get(i));
+            } else {
+                for (int i = 0; i < priceList.size(); i++) {
+                    insertCategories.setFloat((i + 1), priceList.get(i));
                 }
             }
             insertCategories.executeUpdate();
 
             // 2. Creating the 'seats' relations
             createSeats = connection.prepareStatement("create table seats (id integer not null auto_increment,"
-                        + "available boolean default false,"
-                        + "primary key (id))");
+                    + "available boolean default false,"
+                    + "primary key (id))");
             createSeats.executeUpdate();
             // Insert into table
-            String insert = "insert into seats (id, available) values ";
-            for(int i = 0; i < seatCount; i++){
-                insert += "(null, false),";
+            insertSeats = connection.prepareStatement("insert into seats (id, available) values (null, false)");
+            for (int i = 0; i < seatCount; i++) {
+                insertSeats.addBatch();
             }
-            insert = insert.substring(0, insert.length() - 1); // Remove the last coma
-            insertSeats = connection.prepareStatement(insert);
-            insertSeats.executeUpdate();
+            insertSeats.executeBatch();
 
             // 3. Creating the 'bookings' relations
             createBookings = connection.prepareStatement("create table bookings (id integer not null auto_increment,"
-                        + "seat integer null default null,"
-                        + "customer varchar(30) null default null,"
-                        + "category integer null default null,"
-                        + "primary key (id),"
-                        + "foreign key (seat) references seats(id),"
-                        + "foreign key (category) references categories(id))");
+                    + "seat integer unique null default null,"
+                    + "customer varchar(30) null default null,"
+                    + "category integer null default null,"
+                    + "primary key (id),"
+                    + "foreign key (seat) references seats(id),"
+                    + "foreign key (category) references categories(id))");
             createBookings.executeUpdate();
             return true;
 
@@ -290,7 +288,7 @@ public class DataAccess implements AutoCloseable {
         // create the prepared statement, if not created yet
         if (getAvailableSeats == null) {
             try {
-                getAvailableSeats = connection.prepareStatement("SELECT id FROM seats WHERE available is false");
+                getAvailableSeats = connection.prepareStatement("SELECT id FROM seats WHERE available = 0");
             } catch (SQLException ex) {
                 Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -338,68 +336,88 @@ public class DataAccess implements AutoCloseable {
      * @throws DataAccessException if an unrecoverable error occurs
      */
     public List<Booking> bookSeats(String customer, List<Integer> counts, boolean adjoining) throws DataAccessException {
-        //get the number of seats per category
-        int retiredSeats = counts.get(0);
-        int adultSeats = counts.get(1);
-        int childSeats = counts.get(2);
-        //get the list of available seats
-        List<Integer> availableSeats = new ArrayList<>();
-        List<Booking> list = new ArrayList<>();
-        availableSeats = getAvailableSeats(true);
-        if (availableSeats.size() >= (retiredSeats + adultSeats + childSeats)) {
-            for (int i = 0; i < retiredSeats; i++) {
-                try {
-                    bookSeats = connection.prepareStatement("UPDATE seats SET customer = '" + customer + "', id_cat= '0' "
-                            + "WHERE number = " + availableSeats.get(i));
-                } catch (SQLException ex) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
-                try (ResultSet result = bookSeats.executeQuery()) {
-                    while (result.next()) { // booking(int id, int seat, String customer, int category, float price)
-                        list.add(new Booking(availableSeats.get(i), result.getInt(2), customer, result.getInt(4), result.getFloat(5)));
-                    }
-                } catch (SQLException ex) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                }
+        try {
+            //get the number of seats per category
+            ArrayList seatsByCategory = new ArrayList();
+            int totalSeats = 0;
+            // 0: adult, 1: child, 2: retired
+            for (Integer a : counts) {
+                seatsByCategory.add(a);
+                totalSeats += a;
             }
-            //assign the adult seats
-            for (int i = retiredSeats; i < retiredSeats + adultSeats; i++) {
-                try {
-                    bookSeats = connection.prepareStatement("UPDATE seats SET customer = '" + customer + "', id_cat= '1' "
-                            + "WHERE number = " + availableSeats.get(i));
-                } catch (SQLException ex) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
-                try (ResultSet result = bookSeats.executeQuery()) {
-                    while (result.next()) { // booking(int id, int seat, String customer, int category, float price)
-                        list.add(new Booking(availableSeats.get(i), result.getInt(2), customer, result.getInt(4), result.getFloat(5)));
-                    }
-                } catch (SQLException ex) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
-            //assign the child seats 
-            for (int i = retiredSeats + adultSeats; i < availableSeats.size(); i++) {
-                try {
-                    bookSeats = connection.prepareStatement("UPDATE seats SET customer = '" + customer + "', id_cat= '2' "
-                            + "WHERE number = " + availableSeats.get(i));
-                } catch (SQLException ex) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
-                try (ResultSet result = bookSeats.executeQuery()) {
-                    while (result.next()) { // booking(int id, int seat, String customer, int category, float price)
-                        list.add(new Booking(availableSeats.get(i), result.getInt(2), customer, result.getInt(4), result.getFloat(5)));
-                    }
-                } catch (SQLException ex) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
-        }
 
-        return list;
+            //get the list of available seats
+            List<Integer> availableSeats = new ArrayList<>();
+            List<Float> priceList = new ArrayList<>();
+            List<Booking> list = new ArrayList<>();
+            availableSeats = getAvailableSeats(true);
+            priceList = getPriceList();
+            int index = 0; // Index of available seats
+
+            //Prepared statement for bookings
+            insertBookings = connection.prepareStatement("insert into bookings (id, seat, customer, category) values (null, ?, ?, ?)");
+            updateSeats = connection.prepareStatement("update seats set available = 1 where id = ?");
+
+            // If the number of seats to book are lesser than the total number of available seats (all or nothing)
+            if (availableSeats.size() >= totalSeats) {
+
+                // Adult
+                if (seatsByCategory.size() == 1) {
+                    int adultSeats = (int) seatsByCategory.get(0);
+                    for (int i = 0; i < adultSeats; i++) {
+                        insertBookings.setInt(1, availableSeats.get(index));    
+                        insertBookings.setString(2, customer); 
+                        insertBookings.setInt(3, 0); 
+                        insertBookings.addBatch();
+                        updateSeats.setInt(1, availableSeats.get(index));
+                        updateSeats.addBatch();
+                        list.add(new Booking(availableSeats.get(index), customer, 0, priceList.get(0)));
+                        index++; // Go to next evailable seat inside the availableSeats list
+                    }
+                }
+
+                // Child
+                if (seatsByCategory.size() == 2) {
+                    int childSeats = (int) seatsByCategory.get(1);
+                    for (int i = 0; i < childSeats; i++) {
+                        insertBookings.setInt(1, availableSeats.get(index));    
+                        insertBookings.setString(2, customer); 
+                        insertBookings.setInt(3, 1); 
+                        insertBookings.addBatch();
+                        updateSeats.setInt(1, availableSeats.get(index));
+                        updateSeats.addBatch();
+                        list.add(new Booking(availableSeats.get(index), customer, 1, priceList.get(1)));
+                        index++; // Go to next evailable seat inside the availableSeats list
+                    }
+                }
+
+                // Retired
+                if (seatsByCategory.size() == 3) {
+                    int retiredSeats = (int) seatsByCategory.get(2);
+                    for (int i = 0; i < retiredSeats; i++) {
+                        insertBookings.setInt(1, availableSeats.get(index));    
+                        insertBookings.setString(2, customer); 
+                        insertBookings.setInt(3, 2); 
+                        insertBookings.addBatch();
+                        updateSeats.setInt(1, availableSeats.get(index));
+                        updateSeats.addBatch();
+                        list.add(new Booking(availableSeats.get(index), customer, 2, priceList.get(2)));
+                        index++; // Go to next evailable seat inside the availableSeats list
+                    }
+                }
+                
+                // Inserting all bookings into database & updating seats table for booked seats
+                insertBookings.executeBatch();
+                updateSeats.executeBatch();
+                
+            }
+
+            return list;
+            
+        } catch (SQLException ex) {
+            Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return Collections.EMPTY_LIST;
     }
 
     /**
