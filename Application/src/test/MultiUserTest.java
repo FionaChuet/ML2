@@ -175,8 +175,8 @@ public class MultiUserTest {
       }
 
       // check available seats
-      List<Integer> available = daos.get(0).getAvailableSeats(false);
-      System.out.println("available seats=" + available);
+      //List<Integer> available = daos.get(0).getAvailableSeats(false);
+      //System.out.println("available seats=" + available);
 
     } catch (DataAccessException | InterruptedException e) {
 

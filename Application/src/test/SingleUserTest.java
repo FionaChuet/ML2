@@ -26,7 +26,7 @@ import static test.DataStoreInit.SEAT_COUNT;
  * @author Jean-Michel Busca
  *
  */
-public class SingleUserTest {
+ public class SingleUserTest {
 
   //
   // CLASS FIELDS

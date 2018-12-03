@@ -54,13 +54,13 @@ public class DataStoreInit {
     int seats = 2;
     System.out.print("creating a database with " + seats + " seats...");
     System.out.println("\b\b\b: " + dao.initDataStore(seats, asList(50.0f)));
-    System.out.println("available seats: " + dao.getAvailableSeats(false));
+    //System.out.println("available seats: " + dao.getAvailableSeats(false));
 
     // initialize the data store again with the final settings
     seats = SEAT_COUNT;
     System.out.print("creating a database with " + seats + " seats...");
     System.out.println("\b\b\b: " + dao.initDataStore(seats, PRICE_LIST));
-    System.out.println("available seats: " + dao.getAvailableSeats(false));
+    //System.out.println("available seats: " + dao.getAvailableSeats(false));
 
     // close dao
     dao.close();
