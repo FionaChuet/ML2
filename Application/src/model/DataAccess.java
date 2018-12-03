@@ -202,9 +202,13 @@ public class DataAccess implements AutoCloseable {
                         + "primary key (id))");
             createSeats.executeUpdate();
             // Insert into table
-            //String insert = null;
-            
-            
+            String insert = "insert into seats (id, available) values ";
+            for(int i = 0; i < seatCount; i++){
+                insert += "(null, false),";
+            }
+            insert = insert.substring(0, insert.length() - 1); // Remove the last coma
+            insertSeats = connection.prepareStatement(insert);
+            insertSeats.executeUpdate();
 
             // 3. Creating the 'bookings' relations
             createBookings = connection.prepareStatement("create table bookings (id integer not null auto_increment,"
@@ -215,13 +219,12 @@ public class DataAccess implements AutoCloseable {
                         + "foreign key (seat) references seats(id),"
                         + "foreign key (category) references categories(id))");
             createBookings.executeUpdate();
-            
+            return true;
 
         } catch (SQLException ex) {
             System.err.println("Error sql: " + ex);
             Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
         }
-        // TODO
         return false;
 
     }
