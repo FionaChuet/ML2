@@ -185,14 +185,14 @@ public class DataAccess implements AutoCloseable {
                     + "(1, 'child', ?),"
                     + "(2, 'retired', ?)");
             if(priceList.size() == 1){
-                insertCategories.setFloat(1, priceList.get(0));
-                insertCategories.setFloat(2, priceList.get(0));
-                insertCategories.setFloat(3, priceList.get(0));
+                for(int j = 0; j < 3; j++){
+                    insertCategories.setFloat((j+1), priceList.get(0));
+                }
             }
-            else if(priceList.size() == 3){
-                insertCategories.setFloat(1, priceList.get(0));
-                insertCategories.setFloat(2, priceList.get(1));
-                insertCategories.setFloat(3, priceList.get(2));
+            else {
+                for(int i = 0; i < priceList.size(); i++){
+                    insertCategories.setFloat((i+1), priceList.get(i));
+                }
             }
             insertCategories.executeUpdate();
 
@@ -290,7 +290,7 @@ public class DataAccess implements AutoCloseable {
         // create the prepared statement, if not created yet
         if (getAvailableSeats == null) {
             try {
-                getAvailableSeats = connection.prepareStatement("SELECT number FROM seats WHERE customer IS null and id_cat IS null");
+                getAvailableSeats = connection.prepareStatement("SELECT id FROM seats WHERE available is false");
             } catch (SQLException ex) {
                 Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
             }
