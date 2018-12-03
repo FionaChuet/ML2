@@ -174,19 +174,36 @@ public class DataAccess implements AutoCloseable {
             
             // 1. Creating the 'categories' relations
             // Create the relation
-            createCategories = connection.prepareStatement("create table categories (id integer not null auto_increment,"
-                        + "name varchar(10) not null unique,"
+            createCategories = connection.prepareStatement("create table categories (id integer not null,"
+                        + "name varchar(20) not null unique,"
                         + "price float not null,"
                         + "primary key (id))");
             createCategories.executeUpdate();
             // Insert into table
-        
+            insertCategories = connection.prepareStatement("insert into categories (id, name, price)"
+                    + "values (0, 'adult', ?),"
+                    + "(1, 'child', ?),"
+                    + "(2, 'retired', ?)");
+            if(priceList.size() == 1){
+                insertCategories.setFloat(1, priceList.get(0));
+                insertCategories.setFloat(2, priceList.get(0));
+                insertCategories.setFloat(3, priceList.get(0));
+            }
+            else if(priceList.size() == 3){
+                insertCategories.setFloat(1, priceList.get(0));
+                insertCategories.setFloat(2, priceList.get(1));
+                insertCategories.setFloat(3, priceList.get(2));
+            }
+            insertCategories.executeUpdate();
 
             // 2. Creating the 'seats' relations
             createSeats = connection.prepareStatement("create table seats (id integer not null auto_increment,"
                         + "available boolean default false,"
                         + "primary key (id))");
             createSeats.executeUpdate();
+            // Insert into table
+            //String insert = null;
+            
             
 
             // 3. Creating the 'bookings' relations
