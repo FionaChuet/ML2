@@ -355,7 +355,7 @@ public class DataAccess implements AutoCloseable {
         try {
             // Get the specified seats to book in each category (0: adult, 1: child, 2: retired)
             boolean number = true; // Check whether or not the number of seats to book are not greater than the number of available seats
-           // boolean customer = true; // Check whether or no the customer entered is right (not null for instance)
+            boolean customerName = true; // Check whether or no the customer entered is right (not null for instance)
             int totalSeats = 0;  // Total number of seats to book
             List<Integer> seatsToBook = new ArrayList();
             
@@ -389,10 +389,17 @@ public class DataAccess implements AutoCloseable {
             // If the number of seats to book is greater than the number of available (continguous or not) seats
             if (totalSeats > seatsToBook.size()) {
                 number = false;
-            }  
+                System.err.print("There are not enough available seats to book ! Cancel the booking...\n");
+            }
+            
+            // Check is customer names if right
+            if((customer.equals(null)) || (customer.equals(""))){
+                customerName = false;
+                System.err.print("The customer's name is not right ! Cancel the booking...\n");
+            }
 
             // None of the seats to book are already used: we can book them
-            if (number) {
+            if (number && customerName) {
                 //get the list of available seats
                 List<Float> priceList = getPriceList();
                 List<Booking> list = new ArrayList<>();
@@ -457,6 +464,7 @@ public class DataAccess implements AutoCloseable {
             // Get the specified seats to book in each category (0: adult, 1: child, 2: retired)
             Map<Integer, List<Integer>> seatsToBook = new HashMap<>();
             boolean notExist = true;
+            boolean customerName = true; // Check whether or no the customer entered is right (not null for instance)
             boolean number = true;
             int totalSeats = 0;
 
@@ -472,6 +480,7 @@ public class DataAccess implements AutoCloseable {
                     for (Booking a : bookings) {
                         if (a.getSeat() == seatss.get(i).get(j)) {
                             notExist = false;
+                            System.err.print("Seat number " + a.getSeat() + " is already booked ! Cancel the booking...\n");
                         }
                     }
                 }
@@ -479,7 +488,14 @@ public class DataAccess implements AutoCloseable {
 
             // Check of the number of seats to book are greater than the number of available seats
             if (totalSeats > availableSeats.size()) {
+                System.err.print("There are not enough available seats to book ! Cancel the booking...\n");
                 number = false;
+            }
+            
+            // Check is customer names if right
+            if((customer.equals(null)) || (customer.equals(""))){
+                customerName = false;
+                System.err.print("The customer's name is not right ! Cancel the booking...\n");
             }
 
             // None of the seats to book are already used: we can book them
@@ -539,7 +555,8 @@ public class DataAccess implements AutoCloseable {
             try {
                 if (customer.equals("")) {
                     getBookings = connection.prepareStatement("SELECT bookings.id, bookings.seat, bookings.customer, bookings.category, categories.price FROM bookings INNER JOIN categories ON bookings.category = categories.id");
-                } else {
+                } 
+                else {
                     getBookings = connection.prepareStatement("SELECT bookings.id, bookings.seat, bookings.customer, bookings.category, categories.price FROM bookings INNER JOIN categories ON bookings.category = categories.id WHERE bookings.customer = '" + customer + "'");
                 }
             } catch (SQLException ex) {
@@ -582,8 +599,7 @@ public class DataAccess implements AutoCloseable {
         boolean valid = true; //Boolean that checks whether or not a booking is invalid
         try {
             //Variables
-            List<Integer> IDBookings = new ArrayList();
-            checkBooking = connection.prepareStatement("select customer, category, id from bookings where seat = ?"); //seat is unique inside the database
+            checkBooking = connection.prepareStatement("select customer, category from bookings where seat = ?"); //seat is unique inside the database
             cancelBookings = connection.prepareStatement("delete from bookings where seat = ?");
             if (updateSeats == null) {
                 updateSeats = connection.prepareStatement("update seats set available = ? where id = ?");
@@ -599,9 +615,9 @@ public class DataAccess implements AutoCloseable {
                     if ((!result.getString(1).equals(a.getCustomer())) || (result.getInt(2) != a.getCategory())) // Get both customer and price category
                     {
                         valid = false; // If any of the booking is invalid
+                        System.err.print("Booking for seat number " + a.getSeat() + " is not valid ! Cancel operation...\n");
                         break;
                     }
-                    IDBookings.add(result.getInt(3));
                 }
                 checkBooking.clearParameters(); // Clear the parameter to chek another booking with a different seat number
             }
