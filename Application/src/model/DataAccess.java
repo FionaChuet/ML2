@@ -174,11 +174,23 @@ public class DataAccess implements AutoCloseable {
             dropCategories = connection.prepareStatement("drop table categories");
             dropBookings = connection.prepareStatement("drop table bookings");
 
-            // Executing queries
-            dropSeats.executeUpdate();
-            dropCategories.executeUpdate();
-            dropBookings.executeUpdate();
-
+            // Dropping tables if exist
+            try {
+                dropSeats.executeUpdate();
+            } catch (SQLException ex) {
+                System.err.print("Table 'seats' does not exist! Creating it...\n");
+            }
+            try {
+                dropCategories.executeUpdate();
+            } catch (SQLException ex) {
+                System.err.print("Table 'categories' does not exist! Creating it...\n");
+            }
+            try {
+                dropBookings.executeUpdate();
+            } catch (SQLException ex) {
+                System.err.print("Table 'bookings' does not exist! Creating it...\n");
+            }
+            
             // 1. Creating the 'categories' relations
             // Create the relation
             createCategories = connection.prepareStatement("create table categories (id integer not null,"
@@ -226,7 +238,7 @@ public class DataAccess implements AutoCloseable {
             return true;
 
         } catch (SQLException ex) {
-            System.err.println("Error sql: " + ex);
+            System.err.println("Error when creating tables (SQL): " + ex);
             Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
         }
         return false;
@@ -263,8 +275,7 @@ public class DataAccess implements AutoCloseable {
         } catch (SQLException ex) {
             Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
         }
-        //return Collections.EMPTY_LIST;
-        return null;
+        return Collections.EMPTY_LIST;
     }
 
     /**
@@ -343,7 +354,8 @@ public class DataAccess implements AutoCloseable {
     public List<Booking> bookSeats(String customer, List<Integer> counts, boolean adjoining) throws DataAccessException {
         try {
             // Get the specified seats to book in each category (0: adult, 1: child, 2: retired)
-            boolean number = true; // Check whether or not the number of seats to book are not greater than the number of available setas
+            boolean number = true; // Check whether or not the number of seats to book are not greater than the number of available seats
+           // boolean customer = true; // Check whether or no the customer entered is right (not null for instance)
             int totalSeats = 0;  // Total number of seats to book
             List<Integer> seatsToBook = new ArrayList();
             
