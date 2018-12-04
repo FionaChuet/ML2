@@ -499,7 +499,7 @@ public class DataAccess implements AutoCloseable {
             }
 
             // None of the seats to book are already used: we can book them
-            if (notExist && number) {
+            if (notExist && number && customerName) {
                 //get the list of available seats
                 List<Float> priceList = getPriceList();
                 List<Booking> list = new ArrayList<>();
