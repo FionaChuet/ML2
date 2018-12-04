@@ -125,14 +125,8 @@ public class DataAccess implements AutoCloseable {
             connection.setAutoCommit(false);
         } catch (SQLException ex) {
             try {
-                try {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                    connection.rollback();
-                    connection.setAutoCommit(true);
-                } catch (SQLException ex1) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
-                }
-                connection.commit();
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+                connection.rollback();
                 connection.setAutoCommit(true);
             } catch (SQLException ex1) {
                 Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
@@ -206,7 +200,7 @@ public class DataAccess implements AutoCloseable {
             } catch (SQLException ex) {
                 System.err.print("Table 'bookings' does not exist! Creating it...\n");
             }
-            
+
             // 1. Creating the 'categories' relations
             // Create the relation
             createCategories = connection.prepareStatement("create table categories (id integer not null,"
@@ -255,15 +249,9 @@ public class DataAccess implements AutoCloseable {
 
         } catch (SQLException ex) {
             try {
-                try {
-                    System.err.println("Error when creating tables (SQL): " + ex);
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                    connection.rollback();
-                    connection.setAutoCommit(true);
-                } catch (SQLException ex1) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
-                }
-                connection.commit();
+                System.err.println("Error when creating tables (SQL): " + ex);
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+                connection.rollback();
                 connection.setAutoCommit(true);
             } catch (SQLException ex1) {
                 Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
@@ -287,41 +275,29 @@ public class DataAccess implements AutoCloseable {
         try {
             // create the prepared statement, if not created yet
             connection.setAutoCommit(false);
-            try {
-                if (getPriceList == null) {
-                    
-                    getPriceList = connection.prepareStatement("SELECT price FROM categories");
-                }
-            } catch (SQLException ex) {
-                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+            if (getPriceList == null) {
+
+                getPriceList = connection.prepareStatement("SELECT price FROM categories");
             }
+
             // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
-            try (ResultSet result = getPriceList.executeQuery()) {
-                List<Float> list = new ArrayList<>();
-                while (result.next()) {
-                    list.add(result.getFloat(1));
-                }
-                return list;
-            } catch (SQLException ex) {
-                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+            ResultSet result = getPriceList.executeQuery();
+            List<Float> list = new ArrayList<>();
+            while (result.next()) {
+                list.add(result.getFloat(1));
             }
+            return list;
+
         } catch (SQLException ex) {
             try {
-                try {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                    connection.rollback();
-                    connection.setAutoCommit(true);
-                    throw ex;
-                } catch (SQLException ex1) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
-                }
-                connection.commit();
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+                connection.rollback();
                 connection.setAutoCommit(true);
             } catch (SQLException ex1) {
                 Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
             }
         }
-    return Collections.EMPTY_LIST;
+        return Collections.EMPTY_LIST;
     }
 
     /**
@@ -359,33 +335,20 @@ public class DataAccess implements AutoCloseable {
                 connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
             }
             if (getAvailableSeats == null) {
-                try {
-                    getAvailableSeats = connection.prepareStatement("SELECT id FROM seats WHERE available = 1 order by id");
-                } catch (SQLException ex) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                }
+                getAvailableSeats = connection.prepareStatement("SELECT id FROM seats WHERE available = 1 order by id");
             }
             // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
-            try (ResultSet result = getAvailableSeats.executeQuery()) {
-                List<Integer> list = new ArrayList<>();
-                while (result.next()) {
-                    list.add(result.getInt(1));
-                }
-                return list;
-            } catch (SQLException ex) {
-                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+            ResultSet result = getAvailableSeats.executeQuery();
+            List<Integer> list = new ArrayList<>();
+            while (result.next()) {
+                list.add(result.getInt(1));
             }
+            return list;
+
         } catch (SQLException ex) {
             try {
-                try {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                    connection.rollback();
-                    connection.setAutoCommit(true);
-                    throw ex;
-                } catch (SQLException ex1) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
-                }
-                connection.commit();
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+                connection.rollback();
                 connection.setAutoCommit(true);
             } catch (SQLException ex1) {
                 Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
@@ -430,9 +393,9 @@ public class DataAccess implements AutoCloseable {
             boolean customerName = true; // Check whether or no the customer entered is right (not null for instance)
             int totalSeats = 0;  // Total number of seats to book
             List<Integer> seatsToBook = new ArrayList();
-            
+
             // Get the number of seats to book
-            for(int m = 0; m < counts.size(); m++){
+            for (int m = 0; m < counts.size(); m++) {
                 totalSeats += counts.get(m);
             }
 
@@ -444,17 +407,16 @@ public class DataAccess implements AutoCloseable {
             if (adjoining) {
                 for (int k = 0; k < availableSeats.size() - 1; k++) {
                     // Continguous seats                   
-                    if(availableSeats.get(k) == (availableSeats.get(k + 1) - 1)){
-                        if(!seatsToBook.contains(k)){
+                    if (availableSeats.get(k) == (availableSeats.get(k + 1) - 1)) {
+                        if (!seatsToBook.contains(k)) {
                             seatsToBook.add(k);
                         }
-                        if(!seatsToBook.contains(k+1)){
-                            seatsToBook.add(k+1);
-                        }    
+                        if (!seatsToBook.contains(k + 1)) {
+                            seatsToBook.add(k + 1);
+                        }
                     }
                 }
-            }
-            else {
+            } else {
                 seatsToBook = availableSeats;
             }
 
@@ -463,9 +425,9 @@ public class DataAccess implements AutoCloseable {
                 number = false;
                 System.err.print("There are not enough available seats to book ! Cancel the booking...\n");
             }
-            
+
             // Check is customer names if right
-            if((customer.equals(null)) || (customer.equals(""))){
+            if ((customer.equals(null)) || (customer.equals(""))) {
                 customerName = false;
                 System.err.print("The customer's name is not right ! Cancel the booking...\n");
             }
@@ -509,15 +471,8 @@ public class DataAccess implements AutoCloseable {
             }
         } catch (SQLException ex) {
             try {
-                try {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                    connection.rollback();
-                    connection.setAutoCommit(true);
-                    throw ex;
-                } catch (SQLException ex1) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
-                }
-                connection.commit();
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+                connection.rollback();
                 connection.setAutoCommit(true);
             } catch (SQLException ex1) {
                 Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
@@ -577,9 +532,9 @@ public class DataAccess implements AutoCloseable {
                 System.err.print("There are not enough available seats to book ! Cancel the booking...\n");
                 number = false;
             }
-            
+
             // Check is customer names if right
-            if((customer.equals(null)) || (customer.equals(""))){
+            if ((customer.equals(null)) || (customer.equals(""))) {
                 customerName = false;
                 System.err.print("The customer's name is not right ! Cancel the booking...\n");
             }
@@ -620,15 +575,8 @@ public class DataAccess implements AutoCloseable {
 
         } catch (SQLException ex) {
             try {
-                try {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                    connection.rollback();
-                    connection.setAutoCommit(true);
-                    throw ex;
-                } catch (SQLException ex1) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
-                }
-                connection.commit();
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+                connection.rollback();
                 connection.setAutoCommit(true);
             } catch (SQLException ex1) {
                 Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
@@ -653,29 +601,21 @@ public class DataAccess implements AutoCloseable {
         try {
             connection.setAutoCommit(false);
             if (getBookings == null) {
-                try {
-                    if (customer.equals("")) {
-                        getBookings = connection.prepareStatement("SELECT bookings.id, bookings.seat, bookings.customer, bookings.category, categories.price FROM bookings INNER JOIN categories ON bookings.category = categories.id");
-                    }
-                    else {
-                        getBookings = connection.prepareStatement("SELECT bookings.id, bookings.seat, bookings.customer, bookings.category, categories.price FROM bookings INNER JOIN categories ON bookings.category = categories.id WHERE bookings.customer = '" + customer + "'");
-                    }
-                } catch (SQLException ex) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+                if (customer.equals("")) {
+                    getBookings = connection.prepareStatement("SELECT bookings.id, bookings.seat, bookings.customer, bookings.category, categories.price FROM bookings INNER JOIN categories ON bookings.category = categories.id");
+                } else {
+                    getBookings = connection.prepareStatement("SELECT bookings.id, bookings.seat, bookings.customer, bookings.category, categories.price FROM bookings INNER JOIN categories ON bookings.category = categories.id WHERE bookings.customer = '" + customer + "'");
                 }
             }
             // execute the prepared statement; whatever happens, the try-with-resource construct will close the result set
-            try (ResultSet result = getBookings.executeQuery()) {
-                List<Booking> list = new ArrayList<>();
-                while (result.next()) {
-                    
-                    // booking(int id, int seat, String customer, int category, float price)
-                    list.add(new Booking(result.getInt(1), result.getInt(2), result.getString(3), result.getInt(4), result.getFloat(5)));
-                }
-                return list;
-            } catch (SQLException ex) {
-                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+            ResultSet result = getBookings.executeQuery();
+            List<Booking> list = new ArrayList<>();
+            while (result.next()) {
+
+                // booking(int id, int seat, String customer, int category, float price)
+                list.add(new Booking(result.getInt(1), result.getInt(2), result.getString(3), result.getInt(4), result.getFloat(5)));
             }
+            return list;
         } catch (SQLException ex) {
             try {
                 Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
@@ -683,13 +623,7 @@ public class DataAccess implements AutoCloseable {
                 connection.setAutoCommit(true);
                 throw ex;
             } catch (SQLException ex1) {
-                try {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
-                    connection.commit();
-                    connection.setAutoCommit(true);
-                } catch (SQLException ex2) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex2);
-                }
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
             }
         }
         return Collections.EMPTY_LIST;
@@ -761,13 +695,7 @@ public class DataAccess implements AutoCloseable {
                 connection.setAutoCommit(true);
                 throw ex;
             } catch (SQLException ex1) {
-                try {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
-                    connection.commit();
-                    connection.setAutoCommit(true);
-                } catch (SQLException ex2) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex2);
-                }
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
             }
         }
         return valid;
@@ -782,22 +710,22 @@ public class DataAccess implements AutoCloseable {
      */
     @Override
     public void close() throws DataAccessException {
+        try {
+            connection.setAutoCommit(false);
             try {
-                connection.setAutoCommit(false);
-                try {
-                    connection.close();
-                } catch (SQLException ex) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                }
+                connection.close();
             } catch (SQLException ex) {
-                try {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
-                    connection.rollback();
-                    connection.setAutoCommit(true);
-                    throw ex;
-                } catch (SQLException ex1) {
-                    Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
-                }
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
             }
-    }    
+        } catch (SQLException ex) {
+            try {
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex);
+                connection.rollback();
+                connection.setAutoCommit(true);
+                throw ex;
+            } catch (SQLException ex1) {
+                Logger.getLogger(DataAccess.class.getName()).log(Level.SEVERE, null, ex1);
+            }
+        }
+    }
 }
