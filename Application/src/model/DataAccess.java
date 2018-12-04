@@ -343,11 +343,9 @@ public class DataAccess implements AutoCloseable {
     public List<Booking> bookSeats(String customer, List<Integer> counts, boolean adjoining) throws DataAccessException {
         try {
             // Get the specified seats to book in each category (0: adult, 1: child, 2: retired)
-            Map<Integer, Integer> seatsToBook = new HashMap<>();
-            boolean number = true;
-            boolean continguous = true;
-            int totalSeats = 0; 
-            int continguousSeats = 0;
+            boolean number = true; // Check whether or not the number of seats to book are not greater than the number of available setas
+            int totalSeats = 0;  // Total number of seats to book
+            List<Integer> seatsToBook = new ArrayList();
             
             // Get the number of seats to book
             for(int m = 0; m < counts.size(); m++){
@@ -357,26 +355,29 @@ public class DataAccess implements AutoCloseable {
             // Get list of available seats
             List<Integer> availableSeats = getAvailableSeats(true);
 
-            // Check of the number of seats to book are greater than the number of available seats
-            if (totalSeats > availableSeats.size()) {
-                number = false;
-            }
-
             // Check whether or not the values inside the available seats are continguous or not
             // availableSeats is always sorted by ID (query)
             if (adjoining) {
                 for (int k = 0; k < availableSeats.size() - 1; k++) {
-                    // Continguous seats
-                    if (availableSeats.get(k) == (availableSeats.get(k) + 1)) {
-                        continguousSeats++; // Increase the number of continguous seats available
+                    // Continguous seats                   
+                    if(availableSeats.get(k) == (availableSeats.get(k + 1) - 1)){
+                        if(!seatsToBook.contains(k)){
+                            seatsToBook.add(k);
+                        }
+                        if(!seatsToBook.contains(k+1)){
+                            seatsToBook.add(k+1);
+                        }    
                     }
                 }
             }
-
-            // Are there enough continguous available seats for trhe booking?
-            if (continguousSeats != totalSeats) {
-                continguous = false;
+            else {
+                seatsToBook = availableSeats;
             }
+
+            // If the number of seats to book is greater than the number of available (continguous or not) seats
+            if (totalSeats > seatsToBook.size()) {
+                number = false;
+            }  
 
             // None of the seats to book are already used: we can book them
             if (number) {
@@ -396,14 +397,14 @@ public class DataAccess implements AutoCloseable {
                 // Check if all the seats to book are available; if not, cancel the operation
                 for (int j = 0; j < counts.size(); j++) {
                     for (int l = 0; l < counts.get(j); l++) {
-                        insertBookings.setInt(1, availableSeats.get(index));
+                        insertBookings.setInt(1, seatsToBook.get(index));
                         insertBookings.setString(2, customer);
                         insertBookings.setInt(3, j);
                         insertBookings.addBatch();
                         updateSeats.setInt(1, 0);
-                        updateSeats.setInt(2, availableSeats.get(index));
+                        updateSeats.setInt(2, seatsToBook.get(index));
                         updateSeats.addBatch();
-                        list.add(new Booking(availableSeats.get(index), customer, j, priceList.get(j)));
+                        list.add(new Booking(seatsToBook.get(index), customer, j, priceList.get(j)));
                         index++;
                     }
                 }
