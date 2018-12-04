@@ -1,5 +1,8 @@
 package model;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -348,6 +351,13 @@ public class DataAccess implements AutoCloseable {
         try {
             // create the prepared statement, if not created yet
             connection.setAutoCommit(false);
+            //if stable mode is activated, then the transaction is set under SERIALIZABLE 
+            //this means that transactions appears as if executed one after another 
+            //a customer cannot view an available seat that is getting booked by another customer
+            //the default mode in java is READ_UNCOMITTED which is relative to the stable mode set to false
+            if (stable == true) {
+                connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+            }
             if (getAvailableSeats == null) {
                 try {
                     getAvailableSeats = connection.prepareStatement("SELECT id FROM seats WHERE available = 1 order by id");
